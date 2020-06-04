@@ -59,7 +59,7 @@ public abstract class HdfsSplittableDataAccessor extends HcfsBaseAccessor {
     }
 
     @Override
-    public void initialize() {
+    public void afterPropertiesSet() {
         // variable required for the splits iteration logic
         jobConf = new JobConf(configuration, HdfsSplittableDataAccessor.class);
 
