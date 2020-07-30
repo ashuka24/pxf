@@ -112,6 +112,8 @@ public class CodecFactoryTest {
     }
 
     private void testIsThreadSafe(String testDescription, String path, String codecStr, boolean expectedResult) {
-        assertEquals(testDescription, expectedResult, factory.isCodecThreadSafe(codecStr, path, new Configuration()));
+        assertEquals(expectedResult,
+                factory.isCodecThreadSafe(codecStr, path, new Configuration()),
+                testDescription);
     }
 }

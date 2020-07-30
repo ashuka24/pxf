@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 public class CodecFactory {
 
-    private static Logger LOG = LoggerFactory.getLogger(CodecFactory.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CodecFactory.class);
     private static final CodecFactory codecFactoryInstance = new CodecFactory();
 
     /**
