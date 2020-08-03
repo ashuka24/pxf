@@ -20,13 +20,14 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.mapred.FileSplit;
-import org.apache.parquet.HadoopReadOptions;
-import org.apache.parquet.ParquetReadOptions;
+//import org.apache.parquet.HadoopReadOptions;
+//import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -38,7 +39,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
+//import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
@@ -158,7 +159,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         fileReader = ParquetReader.builder(new GroupReadSupport(), file)
                 .withConf(configuration)
                 // Create reader for a given split, read a range in file
-                .withFileRange(fileSplit.getStart(), fileSplit.getStart() + fileSplit.getLength())
+//                .withFileRange(fileSplit.getStart(), fileSplit.getStart() + fileSplit.getLength())
                 .withFilter(recordFilter)
                 .build();
         context.setMetadata(readSchema);
@@ -346,30 +347,31 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
      */
     private MessageType getSchema(Path parquetFile, FileSplit fileSplit) throws IOException {
 
-        final long then = System.nanoTime();
-        ParquetMetadataConverter.MetadataFilter filter = ParquetMetadataConverter.range(
-                fileSplit.getStart(), fileSplit.getStart() + fileSplit.getLength());
-        ParquetReadOptions parquetReadOptions = HadoopReadOptions
-                .builder(configuration)
-                .withMetadataFilter(filter)
-                .build();
-        HadoopInputFile inputFile = HadoopInputFile.fromPath(parquetFile, configuration);
-        try (ParquetFileReader parquetFileReader =
-                     ParquetFileReader.open(inputFile, parquetReadOptions)) {
-            FileMetaData metadata = parquetFileReader.getFileMetaData();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("{}-{}: Reading file {} with {} records in {} RowGroups",
-                        context.getTransactionId(), context.getSegmentId(),
-                        parquetFile.getName(), parquetFileReader.getRecordCount(),
-                        parquetFileReader.getRowGroups().size());
-            }
-            final long millis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - then);
-            LOG.debug("{}-{}: Read schema in {} ms", context.getTransactionId(),
-                    context.getSegmentId(), millis);
-            return metadata.getSchema();
-        } catch (Exception e) {
-            throw new IOException(e);
-        }
+        throw new NotImplementedException();
+//        final long then = System.nanoTime();
+//        ParquetMetadataConverter.MetadataFilter filter = ParquetMetadataConverter.range(
+//                fileSplit.getStart(), fileSplit.getStart() + fileSplit.getLength());
+//        ParquetReadOptions parquetReadOptions = HadoopReadOptions
+//                .builder(configuration)
+//                .withMetadataFilter(filter)
+//                .build();
+//        HadoopInputFile inputFile = HadoopInputFile.fromPath(parquetFile, configuration);
+//        try (ParquetFileReader parquetFileReader =
+//                     ParquetFileReader.open(inputFile, parquetReadOptions)) {
+//            FileMetaData metadata = parquetFileReader.getFileMetaData();
+//            if (LOG.isDebugEnabled()) {
+//                LOG.debug("{}-{}: Reading file {} with {} records in {} RowGroups",
+//                        context.getTransactionId(), context.getSegmentId(),
+//                        parquetFile.getName(), parquetFileReader.getRecordCount(),
+//                        parquetFileReader.getRowGroups().size());
+//            }
+//            final long millis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - then);
+//            LOG.debug("{}-{}: Read schema in {} ms", context.getTransactionId(),
+//                    context.getSegmentId(), millis);
+//            return metadata.getSchema();
+//        } catch (Exception e) {
+//            throw new IOException(e);
+//        }
     }
 
     /**
@@ -518,9 +520,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                     typeName,
                     length,
                     columnName,
-                    origType,
-                    dmt,
-                    null));
+                    origType));
         }
 
         return new MessageType("hive_schema", fields);
