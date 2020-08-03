@@ -5,6 +5,7 @@ import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.filter.ColumnIndexOperandNode;
 import org.greenplum.pxf.api.filter.Node;
@@ -42,7 +43,6 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
  * {@link org.greenplum.pxf.plugins.hdfs.ParquetFileAccessor} to use for its
  * scan.
  */
-@SuppressWarnings("deprecation")
 public class ParquetRecordFilterBuilder implements TreeVisitor {
 
     protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
@@ -165,7 +165,7 @@ public class ParquetRecordFilterBuilder implements TreeVisitor {
         switch (type.asPrimitiveType().getPrimitiveTypeName()) {
             case INT32:
                 simpleFilter = ParquetRecordFilterBuilder.<Integer, Operators.IntColumn>getOperatorWithLtGtSupport(operator)
-                        .apply(intColumn(type.getName()), getIntegerForINT32(type.getOriginalType(), valueOperand));
+                        .apply(intColumn(type.getName()), getIntegerForINT32(type.getLogicalTypeAnnotation(), valueOperand));
                 break;
 
             case INT64:
@@ -260,9 +260,9 @@ public class ParquetRecordFilterBuilder implements TreeVisitor {
         }
     }
 
-    private static Integer getIntegerForINT32(org.apache.parquet.schema.OriginalType originalType, OperandNode valueOperand) {
+    private static Integer getIntegerForINT32(LogicalTypeAnnotation logicalTypeAnnotation, OperandNode valueOperand) {
         if (valueOperand == null) return null;
-        if (originalType == org.apache.parquet.schema.OriginalType.DATE) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
             // Number of days since epoch
             LocalDate localDateValue = LocalDate.parse(valueOperand.toString());
             LocalDate epoch = LocalDate.ofEpochDay(0);

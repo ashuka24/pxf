@@ -5,6 +5,7 @@ import org.apache.hadoop.hive.serde2.io.DateWritable;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.GreenplumDateTime;
@@ -26,23 +27,20 @@ import java.util.Base64;
 /**
  * Converter for Parquet types and values into PXF data types and values.
  */
-@SuppressWarnings("deprecation")
 public enum ParquetTypeConverter {
 
     BINARY {
         @Override
         public DataType getDataType(Type type) {
-            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
+            LogicalTypeAnnotation originalType = type.getLogicalTypeAnnotation();
             if (originalType == null) {
                 return DataType.BYTEA;
-            }
-            switch (originalType) {
-                case DATE:
-                    return DataType.DATE;
-                case TIMESTAMP_MILLIS:
-                    return DataType.TIMESTAMP;
-                default:
-                    return DataType.TEXT;
+            } else if (originalType instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
+                return DataType.DATE;
+            } else if (originalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) {
+                return DataType.TIMESTAMP;
+            } else {
+                return DataType.TEXT;
             }
         }
 
@@ -68,31 +66,35 @@ public enum ParquetTypeConverter {
     INT32 {
         @Override
         public DataType getDataType(Type type) {
-            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
-            if (originalType == org.apache.parquet.schema.OriginalType.DATE) {
+            LogicalTypeAnnotation originalType = type.getLogicalTypeAnnotation();
+            if (originalType instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
                 return DataType.DATE;
-            } else if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
+            } else if (originalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
                 return DataType.NUMERIC;
-            } else if (originalType == org.apache.parquet.schema.OriginalType.INT_8 || originalType == org.apache.parquet.schema.OriginalType.INT_16) {
-                return DataType.SMALLINT;
-            } else {
-                return DataType.INTEGER;
+            } else if (originalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation) {
+                LogicalTypeAnnotation.IntLogicalTypeAnnotation intType = (LogicalTypeAnnotation.IntLogicalTypeAnnotation) originalType;
+                if (intType.getBitWidth() == 8 || intType.getBitWidth() == 16) {
+                    return DataType.SMALLINT;
+                }
             }
+            return DataType.INTEGER;
         }
 
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
             int result = group.getInteger(columnIndex, repeatIndex);
-            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
-            if (originalType == org.apache.parquet.schema.OriginalType.DATE) {
+            LogicalTypeAnnotation originalType = type.getLogicalTypeAnnotation();
+            if (originalType instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
                 return new DateWritable(result).get(true);
-            } else if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
-                return ParquetTypeConverter.bigDecimalFromLong(type, result);
-            } else if (originalType == org.apache.parquet.schema.OriginalType.INT_8 || originalType == org.apache.parquet.schema.OriginalType.INT_16) {
-                return (short) result;
-            } else {
-                return result;
+            } else if (originalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+                return ParquetTypeConverter.bigDecimalFromLong((LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) originalType, result);
+            } else if (originalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation) {
+                LogicalTypeAnnotation.IntLogicalTypeAnnotation intType = (LogicalTypeAnnotation.IntLogicalTypeAnnotation) originalType;
+                if (intType.getBitWidth() == 8 || intType.getBitWidth() == 16) {
+                    return (short) result;
+                }
             }
+            return result;
         }
 
         @Override
@@ -104,8 +106,7 @@ public enum ParquetTypeConverter {
     INT64 {
         @Override
         public DataType getDataType(Type type) {
-            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
-            if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
+            if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
                 return DataType.NUMERIC;
             }
             return DataType.BIGINT;
@@ -114,9 +115,9 @@ public enum ParquetTypeConverter {
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
             long value = group.getLong(columnIndex, repeatIndex);
-            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
-            if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
-                return ParquetTypeConverter.bigDecimalFromLong(type, value);
+            if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+                return ParquetTypeConverter
+                        .bigDecimalFromLong((LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation(), value);
             }
             return value;
         }
@@ -187,7 +188,7 @@ public enum ParquetTypeConverter {
 
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
-            int scale = type.asPrimitiveType().getDecimalMetadata().getScale();
+            int scale = ((LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation()).getScale();
             return new BigDecimal(new BigInteger(group.getBinary(columnIndex, repeatIndex).getBytes()), scale);
         }
 
@@ -290,8 +291,7 @@ public enum ParquetTypeConverter {
     }
 
     // Helper method that returns a BigDecimal from the long value
-    private static BigDecimal bigDecimalFromLong(Type type, long value) {
-        int scale = type.asPrimitiveType().getDecimalMetadata().getScale();
-        return new BigDecimal(BigInteger.valueOf(value), scale);
+    private static BigDecimal bigDecimalFromLong(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType, long value) {
+        return new BigDecimal(BigInteger.valueOf(value), decimalType.getScale());
     }
 }
