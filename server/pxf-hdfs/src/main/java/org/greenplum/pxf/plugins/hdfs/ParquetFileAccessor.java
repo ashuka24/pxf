@@ -268,15 +268,15 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         parquetWriter.write((Group) onerow.getData());
         rowsWritten++;
-        // Check for the output file size every 1000 rows
-        if (rowsWritten % 1000 == 0 && parquetWriter.getDataSize() > DEFAULT_FILE_SIZE) {
-            parquetWriter.close();
-            totalRowsWritten += rowsWritten;
-            // Reset rows written
-            rowsWritten = 0;
-            fileIndex++;
-            createParquetWriter();
-        }
+//        // Check for the output file size every 1000 rows
+//        if (rowsWritten % 1000 == 0 && parquetWriter.getDataSize() > DEFAULT_FILE_SIZE) {
+//            parquetWriter.close();
+//            totalRowsWritten += rowsWritten;
+//            // Reset rows written
+//            rowsWritten = 0;
+//            fileIndex++;
+//            createParquetWriter();
+//        }
         return true;
     }
 
