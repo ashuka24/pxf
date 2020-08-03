@@ -16,7 +16,9 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.pig.convert.DecimalUtils;
 import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.MessageType;
+//noinspection deprecation
 import org.apache.parquet.schema.OriginalType;
+//noinspection deprecation
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.OneField;
@@ -370,6 +372,7 @@ public class ParquetResolverTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testGetFields_Primitive_RepeatedString() throws IOException {
         List<Type> columns = new ArrayList<>();
         columns.add(new PrimitiveType(Type.Repetition.REPEATED, PrimitiveTypeName.BINARY, "myString", OriginalType.UTF8));
@@ -602,6 +605,7 @@ public class ParquetResolverTest {
         return new MessageType(originalSchema.getName(), projectedFields);
     }
 
+    @SuppressWarnings("deprecation")
     private void testSetFields_RightTrimCharHelper(String varchar, String inputChar, String expectedChar) throws IOException {
         List<Type> typeFields = new ArrayList<>();
         typeFields.add(new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "vc1", OriginalType.UTF8));
