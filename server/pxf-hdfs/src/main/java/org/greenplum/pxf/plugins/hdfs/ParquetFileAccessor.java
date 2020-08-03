@@ -42,11 +42,13 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.UnsupportedTypeException;
 import org.greenplum.pxf.api.filter.FilterParser;
@@ -79,16 +81,14 @@ import static org.apache.parquet.hadoop.ParquetOutputFormat.ENABLE_DICTIONARY;
 import static org.apache.parquet.hadoop.ParquetOutputFormat.PAGE_SIZE;
 import static org.apache.parquet.hadoop.ParquetOutputFormat.WRITER_VERSION;
 import static org.apache.parquet.hadoop.api.ReadSupport.PARQUET_READ_SCHEMA;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 
 /**
  * Parquet file accessor.
  * Unit of operation is record.
  */
-@SuppressWarnings("deprecation")
 public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
-    // 90% of half the default hadoop block size
-    private static final int DEFAULT_FILE_SIZE = 128 * 1024 * 1024 * 9 / 10;
     private static final int DEFAULT_ROWGROUP_SIZE = 8 * 1024 * 1024;
     private static final CompressionCodecName DEFAULT_COMPRESSION = CompressionCodecName.SNAPPY;
 
@@ -123,7 +123,6 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
     private ParquetReader<Group> fileReader;
     private CompressionCodecName codecName;
-    //    private ParquetWriter<Group> parquetWriter;
     private RecordWriter<Void, Group> recordWriter;
     private GroupWriteSupport groupWriteSupport;
     private FileSystem fs;
@@ -271,18 +270,8 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     @Override
     public boolean writeNextObject(OneRow onerow) throws IOException, InterruptedException {
 
-//        parquetWriter.write((Group) onerow.getData());
         recordWriter.write(null, (Group) onerow.getData());
         rowsWritten++;
-//        // Check for the output file size every 1000 rows
-//        if (rowsWritten % 1000 == 0 && recordWriter.getDataSize() > DEFAULT_FILE_SIZE) {
-//            parquetWriter.close();
-//            totalRowsWritten += rowsWritten;
-//            // Reset rows written
-//            rowsWritten = 0;
-//            fileIndex++;
-//            createParquetWriter();
-//        }
         return true;
     }
 
@@ -464,36 +453,31 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
             String columnName = column.columnName();
             int columnTypeCode = column.columnTypeCode();
 
-            PrimitiveTypeName typeName;
-            org.apache.parquet.schema.OriginalType origType = null;
-            org.apache.parquet.schema.DecimalMetadata dmt = null;
-            int length = 0;
+            Types.PrimitiveBuilder<PrimitiveType> builder;
             switch (DataType.get(columnTypeCode)) {
                 case BOOLEAN:
-                    typeName = PrimitiveTypeName.BOOLEAN;
+                    builder = Types.optional(PrimitiveTypeName.BOOLEAN);
                     break;
                 case BYTEA:
-                    typeName = PrimitiveTypeName.BINARY;
+                    builder = Types.optional(PrimitiveTypeName.BINARY);
                     break;
                 case BIGINT:
-                    typeName = PrimitiveTypeName.INT64;
+                    builder = Types.optional(PrimitiveTypeName.INT64);
                     break;
                 case SMALLINT:
-                    origType = org.apache.parquet.schema.OriginalType.INT_16;
-                    typeName = PrimitiveTypeName.INT32;
+                    builder = Types.optional(PrimitiveTypeName.INT32)
+                            .as(LogicalTypeAnnotation.intType(16, true));
                     break;
                 case INTEGER:
-                    typeName = PrimitiveTypeName.INT32;
+                    builder = Types.optional(PrimitiveTypeName.INT32);
                     break;
                 case REAL:
-                    typeName = PrimitiveTypeName.FLOAT;
+                    builder = Types.optional(PrimitiveTypeName.FLOAT);
                     break;
                 case FLOAT8:
-                    typeName = PrimitiveTypeName.DOUBLE;
+                    builder = Types.optional(PrimitiveTypeName.DOUBLE);
                     break;
                 case NUMERIC:
-                    origType = org.apache.parquet.schema.OriginalType.DECIMAL;
-                    typeName = PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
                     Integer[] columnTypeModifiers = column.columnTypeModifiers();
                     int precision = HiveDecimal.SYSTEM_DEFAULT_PRECISION;
                     int scale = HiveDecimal.SYSTEM_DEFAULT_SCALE;
@@ -502,33 +486,29 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                         precision = columnTypeModifiers[0];
                         scale = columnTypeModifiers[1];
                     }
-                    length = PRECISION_TO_BYTE_COUNT[precision - 1];
-                    dmt = new org.apache.parquet.schema.DecimalMetadata(precision, scale);
+                    builder = Types
+                            .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+                            .length(PRECISION_TO_BYTE_COUNT[precision - 1])
+                            .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.decimalType(scale, precision));
                     break;
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_TIME_ZONE:
-                    typeName = PrimitiveTypeName.INT96;
+                    builder = Types.optional(PrimitiveTypeName.INT96);
                     break;
                 case DATE:
                 case TIME:
                 case VARCHAR:
                 case BPCHAR:
                 case TEXT:
-                    origType = org.apache.parquet.schema.OriginalType.UTF8;
-                    typeName = PrimitiveTypeName.BINARY;
+                    builder = Types.optional(PrimitiveTypeName.BINARY)
+                            .as(stringType());
                     break;
                 default:
                     throw new UnsupportedTypeException(
                             String.format("Type %d is not supported", columnTypeCode));
             }
-            fields.add(new PrimitiveType(
-                    Type.Repetition.OPTIONAL,
-                    typeName,
-                    length,
-                    columnName,
-                    origType,
-                    dmt,
-                    null));
+
+            fields.add(builder.named(columnName));
         }
 
         return new MessageType("hive_schema", fields);
