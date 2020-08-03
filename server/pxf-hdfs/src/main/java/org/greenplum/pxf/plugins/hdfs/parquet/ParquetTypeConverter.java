@@ -5,7 +5,6 @@ import org.apache.hadoop.hive.serde2.io.DateWritable;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.GreenplumDateTime;
@@ -27,12 +26,13 @@ import java.util.Base64;
 /**
  * Converter for Parquet types and values into PXF data types and values.
  */
+@SuppressWarnings("deprecation")
 public enum ParquetTypeConverter {
 
     BINARY {
         @Override
         public DataType getDataType(Type type) {
-            OriginalType originalType = type.getOriginalType();
+            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
             if (originalType == null) {
                 return DataType.BYTEA;
             }
@@ -68,12 +68,12 @@ public enum ParquetTypeConverter {
     INT32 {
         @Override
         public DataType getDataType(Type type) {
-            OriginalType originalType = type.getOriginalType();
-            if (originalType == OriginalType.DATE) {
+            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
+            if (originalType == org.apache.parquet.schema.OriginalType.DATE) {
                 return DataType.DATE;
-            } else if (originalType == OriginalType.DECIMAL) {
+            } else if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
                 return DataType.NUMERIC;
-            } else if (originalType == OriginalType.INT_8 || originalType == OriginalType.INT_16) {
+            } else if (originalType == org.apache.parquet.schema.OriginalType.INT_8 || originalType == org.apache.parquet.schema.OriginalType.INT_16) {
                 return DataType.SMALLINT;
             } else {
                 return DataType.INTEGER;
@@ -83,12 +83,12 @@ public enum ParquetTypeConverter {
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
             int result = group.getInteger(columnIndex, repeatIndex);
-            OriginalType originalType = type.getOriginalType();
-            if (originalType == OriginalType.DATE) {
+            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
+            if (originalType == org.apache.parquet.schema.OriginalType.DATE) {
                 return new DateWritable(result).get(true);
-            } else if (originalType == OriginalType.DECIMAL) {
+            } else if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
                 return ParquetTypeConverter.bigDecimalFromLong(type, result);
-            } else if (originalType == OriginalType.INT_8 || originalType == OriginalType.INT_16) {
+            } else if (originalType == org.apache.parquet.schema.OriginalType.INT_8 || originalType == org.apache.parquet.schema.OriginalType.INT_16) {
                 return (short) result;
             } else {
                 return result;
@@ -104,8 +104,8 @@ public enum ParquetTypeConverter {
     INT64 {
         @Override
         public DataType getDataType(Type type) {
-            OriginalType originalType = type.getOriginalType();
-            if (originalType == OriginalType.DECIMAL) {
+            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
+            if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
                 return DataType.NUMERIC;
             }
             return DataType.BIGINT;
@@ -114,8 +114,8 @@ public enum ParquetTypeConverter {
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
             long value = group.getLong(columnIndex, repeatIndex);
-            OriginalType originalType = type.getOriginalType();
-            if (originalType == OriginalType.DECIMAL) {
+            org.apache.parquet.schema.OriginalType originalType = type.getOriginalType();
+            if (originalType == org.apache.parquet.schema.OriginalType.DECIMAL) {
                 return ParquetTypeConverter.bigDecimalFromLong(type, value);
             }
             return value;

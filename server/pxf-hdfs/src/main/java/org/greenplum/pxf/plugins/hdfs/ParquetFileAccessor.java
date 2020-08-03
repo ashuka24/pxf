@@ -39,10 +39,8 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -57,8 +55,8 @@ import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.plugins.hdfs.parquet.ParquetRecordFilterBuilder;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetOperatorPrunerAndTransformer;
+import org.greenplum.pxf.plugins.hdfs.parquet.ParquetRecordFilterBuilder;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 
 import java.io.IOException;
@@ -78,11 +76,12 @@ import static org.apache.parquet.hadoop.api.ReadSupport.PARQUET_READ_SCHEMA;
  * Parquet file accessor.
  * Unit of operation is record.
  */
+@SuppressWarnings("deprecation")
 public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
     private static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
     // 90% of half the default hadoop block size
-    private static final int DEFAULT_FILE_SIZE = 64 * 1024 * 1024 * 9 / 10;
+    private static final int DEFAULT_FILE_SIZE = 128 * 1024 * 1024 * 9 / 10;
     private static final int DEFAULT_ROWGROUP_SIZE = 8 * 1024 * 1024;
     private static final int DEFAULT_DICTIONARY_PAGE_SIZE = 512 * 1024;
     private static final WriterVersion DEFAULT_PARQUET_VERSION = WriterVersion.PARQUET_1_0;
@@ -454,8 +453,8 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
             int columnTypeCode = column.columnTypeCode();
 
             PrimitiveTypeName typeName;
-            OriginalType origType = null;
-            DecimalMetadata dmt = null;
+            org.apache.parquet.schema.OriginalType origType = null;
+            org.apache.parquet.schema.DecimalMetadata dmt = null;
             int length = 0;
             switch (DataType.get(columnTypeCode)) {
                 case BOOLEAN:
@@ -468,7 +467,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                     typeName = PrimitiveTypeName.INT64;
                     break;
                 case SMALLINT:
-                    origType = OriginalType.INT_16;
+                    origType = org.apache.parquet.schema.OriginalType.INT_16;
                     typeName = PrimitiveTypeName.INT32;
                     break;
                 case INTEGER:
@@ -481,7 +480,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                     typeName = PrimitiveTypeName.DOUBLE;
                     break;
                 case NUMERIC:
-                    origType = OriginalType.DECIMAL;
+                    origType = org.apache.parquet.schema.OriginalType.DECIMAL;
                     typeName = PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
                     Integer[] columnTypeModifiers = column.columnTypeModifiers();
                     int precision = HiveDecimal.SYSTEM_DEFAULT_PRECISION;
@@ -492,7 +491,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                         scale = columnTypeModifiers[1];
                     }
                     length = PRECISION_TO_BYTE_COUNT[precision - 1];
-                    dmt = new DecimalMetadata(precision, scale);
+                    dmt = new org.apache.parquet.schema.DecimalMetadata(precision, scale);
                     break;
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_TIME_ZONE:
@@ -503,7 +502,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                 case VARCHAR:
                 case BPCHAR:
                 case TEXT:
-                    origType = OriginalType.UTF8;
+                    origType = org.apache.parquet.schema.OriginalType.UTF8;
                     typeName = PrimitiveTypeName.BINARY;
                     break;
                 default:

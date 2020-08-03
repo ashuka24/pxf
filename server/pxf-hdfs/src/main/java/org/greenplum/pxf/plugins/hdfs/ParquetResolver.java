@@ -21,13 +21,11 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
@@ -108,18 +106,19 @@ public class ParquetResolver extends BasePlugin implements Resolver {
         return new OneRow(null, group);
     }
 
+    @SuppressWarnings("deprecation")
     private void fillGroup(int index, OneField field, Group group, Type type) throws IOException {
         if (field.val == null)
             return;
         switch (type.asPrimitiveType().getPrimitiveTypeName()) {
             case BINARY:
-                if (type.getOriginalType() == OriginalType.UTF8)
+                if (type.getOriginalType() == org.apache.parquet.schema.OriginalType.UTF8)
                     group.add(index, (String) field.val);
                 else
                     group.add(index, Binary.fromReusedByteArray((byte[]) field.val));
                 break;
             case INT32:
-                if (type.getOriginalType() == OriginalType.INT_16)
+                if (type.getOriginalType() == org.apache.parquet.schema.OriginalType.INT_16)
                     group.add(index, (Short) field.val);
                 else
                     group.add(index, (Integer) field.val);

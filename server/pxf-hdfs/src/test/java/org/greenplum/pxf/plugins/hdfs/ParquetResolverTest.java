@@ -532,6 +532,7 @@ public class ParquetResolverTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private MessageType getParquetSchemaForPrimitiveTypes(Type.Repetition repetition, boolean readCase) {
         List<Type> fields = new ArrayList<>();
 
