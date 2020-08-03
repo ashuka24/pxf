@@ -180,7 +180,7 @@ project('pxf-hdfs') {
         compile "org.apache.parquet:parquet-encoding:${parquetVersion}"
         compile "org.apache.parquet:parquet-generator:${parquetVersion}"
         compile "org.apache.parquet:parquet-hadoop:${parquetVersion}"
-//        compile "org.apache.parquet:parquet-jackson:${parquetVersion}"
+        compile "org.apache.parquet:parquet-jackson:${parquetVersion}"
         compile "org.apache.hive:hive-storage-api:2.4.0" // for parquet writing
 
         // for parquet tests

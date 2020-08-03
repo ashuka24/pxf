@@ -114,8 +114,8 @@ public class ParquetResolver extends BasePlugin implements Resolver {
             case BINARY:
                 if (type.getOriginalType() == org.apache.parquet.schema.OriginalType.UTF8)
                     group.add(index, (String) field.val);
-//                else
-//                    group.add(index, Binary.fromReusedByteArray((byte[]) field.val));
+                else
+                    group.add(index, Binary.fromReusedByteArray((byte[]) field.val));
                 break;
             case INT32:
                 if (type.getOriginalType() == org.apache.parquet.schema.OriginalType.INT_16)
@@ -156,20 +156,20 @@ public class ParquetResolver extends BasePlugin implements Resolver {
 
                 // Estimated number of bytes needed.
                 int precToBytes = ParquetFileAccessor.PRECISION_TO_BYTE_COUNT[precision - 1];
-//                if (precToBytes == decimalBytes.length) {
-//                    // No padding needed.
-//                    group.add(index, Binary.fromReusedByteArray(decimalBytes));
-//                } else {
-//                    byte[] tgt = new byte[precToBytes];
-//                    if (hiveDecimal.signum() == -1) {
-//                        // For negative number, initializing bits to 1
-//                        for (int i = 0; i < precToBytes; i++) {
-//                            tgt[i] |= 0xFF;
-//                        }
-//                    }
-//                    System.arraycopy(decimalBytes, 0, tgt, precToBytes - decimalBytes.length, decimalBytes.length); // Padding leading zeroes/ones.
-//                    group.add(index, Binary.fromReusedByteArray(tgt));
-//                }
+                if (precToBytes == decimalBytes.length) {
+                    // No padding needed.
+                    group.add(index, Binary.fromReusedByteArray(decimalBytes));
+                } else {
+                    byte[] tgt = new byte[precToBytes];
+                    if (hiveDecimal.signum() == -1) {
+                        // For negative number, initializing bits to 1
+                        for (int i = 0; i < precToBytes; i++) {
+                            tgt[i] |= 0xFF;
+                        }
+                    }
+                    System.arraycopy(decimalBytes, 0, tgt, precToBytes - decimalBytes.length, decimalBytes.length); // Padding leading zeroes/ones.
+                    group.add(index, Binary.fromReusedByteArray(tgt));
+                }
                 // end -- org.apache.hadoop.hive.ql.io.parquet.write.DataWritableWriter.DecimalDataWriter#decimalToBinary
                 break;
             case INT96:  // SQL standard timestamp string value with or without time zone literals: https://www.postgresql.org/docs/9.4/datatype-datetime.html
